@@ -1,0 +1,53 @@
+version: '3.9'
+services:
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: restaurantdb
+      MYSQL_USER: restaurant
+      MYSQL_PASSWORD: restaurant_pass
+    ports: ["3306:3306"]
+    volumes: [ "dbdata:/var/lib/mysql" ]
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports: ["8081:80"]
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: root
+    depends_on: [ "db" ]
+
+  api:
+    build: ./backend
+    environment:
+      - PORT=8080
+      - CORS_ORIGIN=http://localhost:5173
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=restaurantdb
+      - DB_USER=restaurant
+      - DB_PASS=restaurant_pass
+      - JWT_SECRET=supersecretjwt
+      - RAZORPAY_KEY_ID=your_key_id
+      - RAZORPAY_KEY_SECRET=your_key_secret
+      - RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
+    ports: ["8080:8080"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    environment:
+      - VITE_API_BASE=http://localhost:8080
+    ports: ["5173:5173"]
+    depends_on: [ "api" ]
+
+volumes:
+  dbdata:
